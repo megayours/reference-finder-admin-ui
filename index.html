@@ -76,6 +76,10 @@
   .modal-body .detail { margin-bottom: 12px; }
   .modal-body .detail label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
   .modal-body .detail p { font-size: 14px; margin-top: 2px; }
+  .modal-body textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: var(--radius); font-size: 14px; font-family: inherit; width: 100%; min-height: 100px; resize: vertical; outline: none; margin-top: 4px; }
+  .modal-body textarea:focus { border-color: var(--accent); }
+  .desc-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .desc-actions .status { font-size: 12px; }
   .modal-actions { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); justify-content: flex-end; }
 
   /* Setup */
@@ -177,7 +181,14 @@
       <div class="detail"><label>Collection</label><p id="modalCollection"></p></div>
       <div class="detail"><label>Identifier</label><p id="modalIdentifier"></p></div>
       <div class="detail"><label>Filename</label><p id="modalFilename"></p></div>
-      <div class="detail"><label>Description</label><p id="modalDescription"></p></div>
+      <div class="detail">
+        <label>Description</label>
+        <textarea id="modalDescription"></textarea>
+        <div class="desc-actions">
+          <button id="descSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:13px">Save & Re-embed</button>
+          <span id="descStatus" class="status"></span>
+        </div>
+      </div>
       <div class="detail"><label>Created</label><p id="modalCreated"></p></div>
     </div>
     <div class="modal-actions">
@@ -366,7 +377,8 @@ function openModal(id) {
   document.getElementById('modalCollection').textContent = img.collection;
   document.getElementById('modalIdentifier').textContent = img.identifier;
   document.getElementById('modalFilename').textContent = img.filename;
-  document.getElementById('modalDescription').textContent = img.description || '(none)';
+  document.getElementById('modalDescription').value = img.description || '';
+  document.getElementById('descStatus').textContent = '';
   document.getElementById('modalCreated').textContent = img.createdAt ? new Date(img.createdAt).toLocaleString() : '—';
 
   document.getElementById('modal').classList.remove('hidden');
@@ -392,6 +404,36 @@ document.getElementById('modalDelete').addEventListener('click', async () => {
     renderPagination();
   } catch (err) {
     alert(`Delete failed: ${err.message}`);
+  }
+});
+
+// --- Description edit ---
+document.getElementById('descSaveBtn').addEventListener('click', async () => {
+  const id = document.getElementById('modal')._imageId;
+  const description = document.getElementById('modalDescription').value;
+  const status = document.getElementById('descStatus');
+  const btn = document.getElementById('descSaveBtn');
+
+  btn.disabled = true;
+  status.className = 'status';
+  status.innerHTML = '<span class="spinner"></span> Re-embedding...';
+
+  try {
+    const res = await api(`/v1/images/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    });
+    status.className = 'status success';
+    status.textContent = 'Saved';
+    // Update local state
+    const idx = state.images.findIndex(i => i.id === id);
+    if (idx !== -1) state.images[idx].description = res.description;
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = `Error: ${err.message}`;
+  } finally {
+    btn.disabled = false;
   }
 });
 
