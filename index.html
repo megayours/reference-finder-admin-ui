@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference Finder Admin</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --danger: #f85149; --success: #3fb950; --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  a { color: var(--accent); }
+
+  /* Layout */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 16px; font-weight: 600; }
+  .header .settings { margin-left: auto; cursor: pointer; color: var(--muted); }
+  .header .settings:hover { color: var(--text); }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+  .tab { padding: 8px 16px; border-radius: var(--radius); cursor: pointer; background: none; color: var(--muted); border: 1px solid transparent; font-size: 14px; }
+  .tab.active { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Forms & inputs */
+  input, select { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: var(--radius); font-size: 14px; outline: none; }
+  input:focus { border-color: var(--accent); }
+  input[type="file"] { padding: 6px; }
+  label { font-size: 13px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+
+  /* Buttons */
+  button { cursor: pointer; font-size: 14px; border-radius: var(--radius); border: 1px solid var(--border); padding: 8px 16px; background: var(--surface); color: var(--text); }
+  button:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+
+  /* Filters */
+  .filters { display: flex; gap: 12px; align-items: end; margin-bottom: 20px; flex-wrap: wrap; }
+  .filters input { width: 200px; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+  .card:hover { border-color: var(--accent); }
+  .card img { width: 100%; height: 180px; object-fit: cover; display: block; background: #000; }
+  .card-body { padding: 10px 12px; }
+  .card-body .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-body .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; gap: 12px; margin-top: 20px; justify-content: center; }
+  .pagination .info { font-size: 13px; color: var(--muted); }
+
+  /* Upload form */
+  .upload-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 500px; display: flex; flex-direction: column; gap: 16px; }
+  .upload-form .preview { max-height: 200px; border-radius: var(--radius); display: none; }
+  .upload-form .status { font-size: 13px; color: var(--muted); }
+  .upload-form .status.error { color: var(--danger); }
+  .upload-form .status.success { color: var(--success); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-header h2 { font-size: 16px; }
+  .modal-body { padding: 20px; }
+  .modal-body img { width: 100%; border-radius: var(--radius); margin-bottom: 16px; }
+  .modal-body .detail { margin-bottom: 12px; }
+  .modal-body .detail label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .modal-body .detail p { font-size: 14px; margin-top: 2px; }
+  .modal-actions { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); justify-content: flex-end; }
+
+  /* Setup */
+  .setup { max-width: 400px; margin: 80px auto; text-align: center; }
+  .setup h2 { margin-bottom: 8px; }
+  .setup p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .setup form { display: flex; flex-direction: column; gap: 12px; }
+  .setup input { text-align: center; }
+
+  .hidden { display: none !important; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Reference Finder</h1>
+  <span class="settings" id="settingsBtn" title="Settings">&#9881;</span>
+</div>
+
+<!-- Setup screen -->
+<div id="setup" class="setup hidden">
+  <h2>Connect to API</h2>
+  <p>Enter your API base URL and key to get started.</p>
+  <form id="setupForm">
+    <div class="field">
+      <label>API Base URL</label>
+      <input id="setupUrl" type="url" placeholder="https://references.yours.fun" required>
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input id="setupKey" type="password" placeholder="your-api-key" required>
+    </div>
+    <button type="submit" class="btn-primary">Connect</button>
+  </form>
+</div>
+
+<!-- Main app -->
+<div id="app" class="container hidden">
+  <div class="tabs">
+    <div class="tab active" data-tab="browse">Browse</div>
+    <div class="tab" data-tab="upload">Upload</div>
+  </div>
+
+  <!-- Browse tab -->
+  <div id="browseTab">
+    <div class="filters">
+      <div class="field">
+        <label>Collection</label>
+        <input id="filterCollection" type="text" placeholder="All collections">
+      </div>
+      <div class="field">
+        <label>Identifier</label>
+        <input id="filterIdentifier" type="text" placeholder="All identifiers">
+      </div>
+      <button id="filterBtn" class="btn-primary">Filter</button>
+    </div>
+    <div id="imageGrid" class="grid"></div>
+    <div id="pagination" class="pagination hidden">
+      <button id="prevBtn">&#8592; Prev</button>
+      <span class="info" id="pageInfo"></span>
+      <button id="nextBtn">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Upload tab -->
+  <div id="uploadTab" class="hidden">
+    <form id="uploadForm" class="upload-form">
+      <div class="field">
+        <label>Image File</label>
+        <input id="uploadFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" required>
+      </div>
+      <img id="uploadPreview" class="preview" alt="Preview">
+      <div class="field">
+        <label>Collection</label>
+        <input id="uploadCollection" type="text" placeholder="e.g. avatars" required>
+      </div>
+      <div class="field">
+        <label>Identifier</label>
+        <input id="uploadIdentifier" type="text" placeholder="e.g. user-123" required>
+      </div>
+      <button type="submit" class="btn-primary">Upload</button>
+      <div id="uploadStatus" class="status"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Image detail modal -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Image Details</h2>
+      <button id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <img id="modalImg" alt="">
+      <div class="detail"><label>ID</label><p id="modalId"></p></div>
+      <div class="detail"><label>Collection</label><p id="modalCollection"></p></div>
+      <div class="detail"><label>Identifier</label><p id="modalIdentifier"></p></div>
+      <div class="detail"><label>Filename</label><p id="modalFilename"></p></div>
+      <div class="detail"><label>Description</label><p id="modalDescription"></p></div>
+      <div class="detail"><label>Created</label><p id="modalCreated"></p></div>
+    </div>
+    <div class="modal-actions">
+      <button id="modalDelete" class="btn-danger">Delete</button>
+      <button id="modalClose2">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PAGE_SIZE = 20;
+let state = { offset: 0, total: 0, images: [] };
+
+// --- Config ---
+function getConfig() {
+  const url = localStorage.getItem('rf_api_url');
+  const key = localStorage.getItem('rf_api_key');
+  return url && key ? { url: url.replace(/\/$/, ''), key } : null;
+}
+
+function saveConfig(url, key) {
+  localStorage.setItem('rf_api_url', url.replace(/\/$/, ''));
+  localStorage.setItem('rf_api_key', key);
+}
+
+async function api(path, opts = {}) {
+  const cfg = getConfig();
+  const res = await fetch(`${cfg.url}${path}`, {
+    ...opts,
+    headers: { 'x-api-key': cfg.key, ...(opts.headers || {}) },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// --- Init ---
+function init() {
+  if (getConfig()) {
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadImages();
+  } else {
+    document.getElementById('setup').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+}
+
+// --- Setup ---
+document.getElementById('setupForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  saveConfig(document.getElementById('setupUrl').value, document.getElementById('setupKey').value);
+  init();
+});
+
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  localStorage.removeItem('rf_api_url');
+  localStorage.removeItem('rf_api_key');
+  init();
+});
+
+// --- Tabs ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('browseTab').classList.toggle('hidden', tab.dataset.tab !== 'browse');
+    document.getElementById('uploadTab').classList.toggle('hidden', tab.dataset.tab !== 'upload');
+  });
+});
+
+// --- Browse ---
+async function loadImages() {
+  const collection = document.getElementById('filterCollection').value;
+  const identifier = document.getElementById('filterIdentifier').value;
+  const params = new URLSearchParams({ limit: PAGE_SIZE, offset: state.offset });
+  if (collection) params.set('collection', collection);
+  if (identifier) params.set('identifier', identifier);
+
+  try {
+    const res = await api(`/v1/images?${params}`);
+    state.images = res.data;
+    state.total = res.total;
+    renderGrid();
+    renderPagination();
+  } catch (err) {
+    document.getElementById('imageGrid').innerHTML = `<p style="color:var(--danger)">Error: ${err.message}</p>`;
+  }
+}
+
+function renderGrid() {
+  const grid = document.getElementById('imageGrid');
+  if (!state.images.length) {
+    grid.innerHTML = '<p style="color:var(--muted)">No images found.</p>';
+    return;
+  }
+  grid.innerHTML = state.images.map(img => `
+    <div class="card" data-id="${img.id}">
+      <img src="${img.url}" alt="${img.filename}" loading="lazy">
+      <div class="card-body">
+        <div class="name">${img.filename}</div>
+        <div class="meta">${img.collection} / ${img.identifier}</div>
+      </div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => openModal(card.dataset.id));
+  });
+}
+
+function renderPagination() {
+  const pag = document.getElementById('pagination');
+  if (state.total <= PAGE_SIZE) { pag.classList.add('hidden'); return; }
+  pag.classList.remove('hidden');
+
+  const page = Math.floor(state.offset / PAGE_SIZE) + 1;
+  const pages = Math.ceil(state.total / PAGE_SIZE);
+  document.getElementById('pageInfo').textContent = `Page ${page} of ${pages} (${state.total} total)`;
+  document.getElementById('prevBtn').disabled = state.offset === 0;
+  document.getElementById('nextBtn').disabled = state.offset + PAGE_SIZE >= state.total;
+}
+
+document.getElementById('prevBtn').addEventListener('click', () => { state.offset = Math.max(0, state.offset - PAGE_SIZE); loadImages(); });
+document.getElementById('nextBtn').addEventListener('click', () => { state.offset += PAGE_SIZE; loadImages(); });
+document.getElementById('filterBtn').addEventListener('click', () => { state.offset = 0; loadImages(); });
+
+// Also filter on Enter
+document.getElementById('filterCollection').addEventListener('keydown', (e) => { if (e.key === 'Enter') { state.offset = 0; loadImages(); } });
+document.getElementById('filterIdentifier').addEventListener('keydown', (e) => { if (e.key === 'Enter') { state.offset = 0; loadImages(); } });
+
+// --- Upload ---
+document.getElementById('uploadFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  const preview = document.getElementById('uploadPreview');
+  if (file) {
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = document.getElementById('uploadStatus');
+  const btn = e.target.querySelector('button[type="submit"]');
+
+  const file = document.getElementById('uploadFile').files[0];
+  const collection = document.getElementById('uploadCollection').value;
+  const identifier = document.getElementById('uploadIdentifier').value;
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('collection', collection);
+  form.append('identifier', identifier);
+
+  btn.disabled = true;
+  status.className = 'status';
+  status.innerHTML = '<span class="spinner"></span> Uploading & processing...';
+
+  try {
+    const res = await api('/v1/images', { method: 'POST', body: form });
+    status.className = 'status success';
+    status.textContent = `Uploaded: ${res.filename} (${res.id})`;
+    document.getElementById('uploadForm').reset();
+    document.getElementById('uploadPreview').style.display = 'none';
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = `Error: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Modal ---
+function openModal(id) {
+  const img = state.images.find(i => i.id === id);
+  if (!img) return;
+
+  document.getElementById('modalImg').src = img.url;
+  document.getElementById('modalTitle').textContent = img.filename;
+  document.getElementById('modalId').textContent = img.id;
+  document.getElementById('modalCollection').textContent = img.collection;
+  document.getElementById('modalIdentifier').textContent = img.identifier;
+  document.getElementById('modalFilename').textContent = img.filename;
+  document.getElementById('modalDescription').textContent = img.description || '(none)';
+  document.getElementById('modalCreated').textContent = img.createdAt ? new Date(img.createdAt).toLocaleString() : '—';
+
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal')._imageId = img.id;
+}
+
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalClose2').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+
+document.getElementById('modalDelete').addEventListener('click', async () => {
+  const id = document.getElementById('modal')._imageId;
+  if (!confirm('Delete this image permanently?')) return;
+
+  try {
+    await api(`/v1/images/${id}`, { method: 'DELETE' });
+    closeModal();
+    state.images = state.images.filter(i => i.id !== id);
+    state.total--;
+    renderGrid();
+    renderPagination();
+  } catch (err) {
+    alert(`Delete failed: ${err.message}`);
+  }
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+// Start
+init();
+</script>
+</body>
+</html>
